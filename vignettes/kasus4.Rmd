@@ -1,0 +1,95 @@
+---
+title: "kasus4"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(tidyverse)
+library(cluster)
+library(factoextra)
+library(readr)
+```
+
+## Data preparation
+
+``` {r}
+df <- read.csv ("C:/Users/Students/Documents/silvialatifahp/racademyproject/data-raw/004_hdi.csv")
+dim(df)
+sum(is.na(df))
+```
+
+```{r}
+rownames(df) <- df[,1]
+df <- df[, c(-1, -2)]
+princ <- prcomp(df) #
+dfnorm <- scale(df)
+df
+head(dfnorm, 5)
+```
+df <- df%>%
+  mutate_if(is.factor, as.numeric)
+
+```{r}
+distance <- get_dist(dfnorm, method = "euclidean")
+fviz_dist(distance, gradient = list(low = "#1C2833", mid = "white", high = "#FC4E07" ))
+```
+
+``` {r k=2}
+k2 <- kmeans(dfnorm, centers = 2, nstart = 25)
+str(k2)
+k2
+fviz_cluster(k2, data = dfnorm)
+```
+
+```{r visualisasi}
+dfnorm %>%
+  as_tibble() %>%
+  mutate(cluster = k2$cluster,
+         state = row.names(df)) %>%
+  ggplot(aes(hdi, revenue, color = factor(cluster), label = state)) +
+  geom_text()
+```
+
+```{r klaster 3,4,5}
+k3 <- kmeans(dfnorm, centers = 3, nstart = 25)
+k4 <- kmeans(dfnorm, centers = 4, nstart = 25)
+k5 <- kmeans(dfnorm, centers = 5, nstart = 25)
+
+p1 <- fviz_cluster(k2, geom = "point", data = dfnorm) + ggtitle("k = 2")
+p2 <- fviz_cluster(k3, geom = "point",  data = dfnorm) + ggtitle("k = 3")
+p3 <- fviz_cluster(k4, geom = "point",  data = dfnorm) + ggtitle("k = 4")
+p4 <- fviz_cluster(k5, geom = "point",  data = dfnorm) + ggtitle("k = 5")
+library(gridExtra)
+grid.arrange(p1,p2,p3,p4, nrow = 2)
+```
+
+```{r sillhoette method}
+fviz_nbclust(dfnorm, kmeans, method = "silhouette")
+```
+
+```{r}
+set.seed(1234)
+final <- kmeans(dfnorm, 4, nstart = 25)
+print(final)
+fviz_cluster(final, data = dfnorm)
+```
+
+```{r}
+df %>%
+  mutate(Cluster = final$cluster) %>%
+  group_by(Cluster) %>%
+  summarise_all("mean")
+```
+
+
+
